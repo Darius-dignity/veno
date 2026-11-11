@@ -1,0 +1,23 @@
+{
+  "name": "veno",
+  "version": "0.0.0",
+  "description": "Veno is a cafe menu app.",
+  "main": "server.js",
+  "scripts": {
+    "test": "npm jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Darius-dignity/veno.git"
+  },
+  "keywords": [
+    "menu",
+    "cafe"
+  ],
+  "author": "Darius Dignity",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Darius-dignity/veno/issues"
+  },
+  "homepage": "https://github.com/Darius-dignity/veno#readme"
+}
