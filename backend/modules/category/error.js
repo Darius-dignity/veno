@@ -61,7 +61,7 @@ class CategoryDatabaseError extends CategoryError {
   }
 }
 
-export {
+export default {
   CategoryError,
   InvalidCategoryIdError,
   CategoryNotFoundError,

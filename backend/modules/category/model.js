@@ -24,6 +24,8 @@ const categorySchema = new mongoose.Schema(
   }
 )
 
+categorySchema.index({ isActive: 1, name: 1, _id: 1 })
+
 const Category = mongoose.model("Category", categorySchema)
 
 export default Category
