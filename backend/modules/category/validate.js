@@ -14,18 +14,22 @@ const listCategoriesQuery = z.object({
     .optional(),
 })
 
+// multipart/form-data sends everything as text ("true"), JSON sends real booleans
+const booleanField = z.union([z.boolean(), z.stringbool()])
+
+// "icon" is intentionally not here: it comes from the uploaded file (req.file),
+// so a client can never set it by sending a file name in the body
 const createCategoryBody = z.object({
   name: z.string().trim().min(1, "Name is required").max(50),
   description: z.string().trim().max(300).optional(),
-  isActive: z.boolean().optional(),
+  isActive: booleanField.optional(),
 })
 
-// Every field optional, but at least one must be sent
-const updateCategoryBody = createCategoryBody
-  .partial()
-  .refine((data) => Object.keys(data).length > 0, {
-    message: "At least one field is required",
-  })
+// Every field optional. "Nothing to update" is checked in the service,
+// because a request with only a new icon file has an empty body.
+const updateCategoryBody = createCategoryBody.partial().extend({
+  removeIcon: booleanField.optional(),
+})
 
 export default {
   categoryIdParams,

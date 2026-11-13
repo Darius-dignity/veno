@@ -28,16 +28,21 @@ class CategoryController {
 
   // Admin: POST /categories
   create = async (req, res) => {
-    const category = await this.categoryService.createCategory(req.body)
+    // req.file exists only when an icon was uploaded
+    const data = req.file ? { ...req.body, icon: req.file.filename } : req.body
+
+    const category = await this.categoryService.createCategory(data)
 
     res.status(201).json(CategoryDTO.toCategoryDTO(category))
   }
 
   // Admin: PATCH /categories/:id
   update = async (req, res) => {
+    const data = req.file ? { ...req.body, icon: req.file.filename } : req.body
+
     const category = await this.categoryService.updateCategory(
       req.params.id,
-      req.body
+      data
     )
 
     res.status(200).json(CategoryDTO.toCategoryDTO(category))

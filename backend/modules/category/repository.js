@@ -11,13 +11,14 @@ const {
 } = CategoryErrors
 
 // Public menu list: only what the menu needs (covered by the compound index)
-const MENU_PROJECTION = { name: 1 }
+const MENU_PROJECTION = { name: 1, icon: 1 }
 
 // Admin / detail view: no __v, only real fields
 const DETAIL_PROJECTION = {
   name: 1,
   description: 1,
   isActive: 1,
+  icon: 1,
   createdAt: 1,
   updatedAt: 1,
 }

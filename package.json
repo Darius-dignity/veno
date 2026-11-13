@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "description": "Veno is a cafe menu app.",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "test": "npm jest",
     "start": "node backend/server.js",
@@ -28,6 +29,7 @@
     "dotenv": "^18.0.10",
     "express": "^5.3.0",
     "mongoose": "^9.12.1",
+    "multer": "^2.5.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

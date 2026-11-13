@@ -41,12 +41,11 @@ class CategoryAlreadyExistsError extends CategoryError {
   }
 }
 
-class CategoryHasItemsError extends CategoryError {
-  constructor(id) {
-    super("Category still has items and cannot be deleted", {
-      statusCode: 409,
-      code: "CATEGORY_HAS_ITEMS",
-      details: { id },
+class CategoryEmptyUpdateError extends CategoryError {
+  constructor() {
+    super("Nothing to update", {
+      statusCode: 400,
+      code: "CATEGORY_EMPTY_UPDATE",
     })
   }
 }
@@ -66,6 +65,6 @@ export default {
   InvalidCategoryIdError,
   CategoryNotFoundError,
   CategoryAlreadyExistsError,
-  CategoryHasItemsError,
+  CategoryEmptyUpdateError,
   CategoryDatabaseError,
 }
