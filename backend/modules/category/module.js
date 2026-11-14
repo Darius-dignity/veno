@@ -11,7 +11,12 @@ import FileStorage from "../../utils/file-storage.js"
 
 const ICON_FOLDER = "category"
 
-const createCategoryModule = () => {
+// Must match IMAGE_FOLDER in item/module.js: the category service deletes the
+// image files of the items that are removed together with a category
+const ITEM_IMAGE_FOLDER = "item"
+
+// itemRepository comes from outside (see app.route.js)
+const createCategoryModule = ({ itemRepository }) => {
   const iconUploader = multerConfig.createUploader({
     folder: ICON_FOLDER,
     allowedTypes: { "image/svg+xml": ".svg", "image/webp": ".webp" },
@@ -22,11 +27,17 @@ const createCategoryModule = () => {
     directory: multerConfig.getUploadDir(ICON_FOLDER),
   })
 
+  const itemImageStorage = new FileStorage({
+    directory: multerConfig.getUploadDir(ITEM_IMAGE_FOLDER),
+  })
+
   const categoryRepository = new CategoryRepository(Category)
 
   const categoryService = new CategoryService({
     categoryRepository,
+    itemRepository,
     iconStorage,
+    itemImageStorage,
   })
 
   const categoryController = new CategoryController({ categoryService })

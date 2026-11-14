@@ -2,6 +2,8 @@ node_modules/
 package-lock.json
 .env
 
-# Uploaded category icons (the folder itself stays in git via .gitkeep)
+# Uploaded images (the folders themselves stay in git via .gitkeep)
 frontend/public/images/category/*
 !frontend/public/images/category/.gitkeep
+frontend/public/images/item/*
+!frontend/public/images/item/.gitkeep

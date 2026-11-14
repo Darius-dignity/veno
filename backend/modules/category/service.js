@@ -8,10 +8,18 @@ const {
 
 class CategoryService {
   // categoryRepository: CategoryRepository instance
-  // iconStorage: anything that exposes remove(filename) (FileStorage)
-  constructor({ categoryRepository, iconStorage }) {
+  // itemRepository: anything that exposes findImagesByCategoryId(categoryId)
+  // iconStorage / itemImageStorage: anything that exposes remove(filename) (FileStorage)
+  constructor({
+    categoryRepository,
+    itemRepository,
+    iconStorage,
+    itemImageStorage,
+  }) {
     this.categoryRepository = categoryRepository
+    this.itemRepository = itemRepository
     this.iconStorage = iconStorage
+    this.itemImageStorage = itemImageStorage
   }
 
   async createCategory(data) {
@@ -79,9 +87,17 @@ class CategoryService {
     // findById validates the id format and throws if the category does not exist
     const category = await this.categoryRepository.findById(id)
 
+    // The image file names must be read BEFORE the items are deleted
+    const itemImages = await this.itemRepository.findImagesByCategoryId(id)
+
     // The Mongoose middleware in model.js also deletes all items of this category
     await this.categoryRepository.deleteById(id)
+
+    // Files are removed only after the database delete worked
     await this.iconStorage.remove(category.icon)
+    await Promise.all(
+      itemImages.map((image) => this.itemImageStorage.remove(image))
+    )
   }
 
   // Used by the item module before creating or moving an item

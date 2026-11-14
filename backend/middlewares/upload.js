@@ -21,7 +21,7 @@ const toUploadError = (error) => {
 
 // The mimetype and file name come from the client and can be faked,
 // so we also look at the real content of the saved file.
-const HEAD_LENGTH = 4096
+const HEAD_LENGTH = 64 * 1024 // an SVG can have a long comment/DOCTYPE before <svg>
 
 const CONTENT_CHECKS = {
   // WebP files start with "RIFF", 4 size bytes, then "WEBP"
@@ -90,9 +90,10 @@ const uploadSingle = (uploader, fieldName) => (req, res, next) => {
 
 // Error middleware: if anything fails after the file was saved
 // (validation, duplicate name, DB error), delete the orphaned file.
-const removeUploadedFileOnError = (error, req, res, next) => {
+// The file is deleted BEFORE the error response is sent.
+const removeUploadedFileOnError = async (error, req, res, next) => {
   if (req.file?.path) {
-    fs.unlink(req.file.path).catch(() => {})
+    await fs.unlink(req.file.path).catch(() => {})
   }
 
   next(error)

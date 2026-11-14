@@ -1,67 +1,56 @@
-import { z } from "zod"
+import ItemDTO from "./dto.js"
 
-const objectId = (message) =>
-  z.string().regex(/^[0-9a-fA-F]{24}$/, message)
+class ItemController {
+  constructor({ itemService }) {
+    this.itemService = itemService
+  }
 
-const itemIdParams = z.object({
-  id: objectId("Invalid item id"),
-})
+  // Public: GET /items/menu/:categoryId
+  getMenu = async (req, res) => {
+    const items = await this.itemService.getMenuItems(req.params.categoryId)
 
-// GET /items/menu/:categoryId
-const menuCategoryParams = z.object({
-  categoryId: objectId("Invalid category id"),
-})
+    res.status(200).json(ItemDTO.toMenuItemListDTO(items))
+  }
 
-// GET /items?category=<id>&isAvailable=true
-const listItemsQuery = z.object({
-  category: objectId("Invalid category id").optional(),
-  isAvailable: z
-    .enum(["true", "false"])
-    .transform((value) => value === "true")
-    .optional(),
-})
+  // Admin: GET /items?category=<id>&isAvailable=true
+  getAll = async (req, res) => {
+    const items = await this.itemService.getAllItems(req.query)
 
-// multipart/form-data sends everything as text ("true", "4.5"), JSON sends real types
-const booleanField = z.union([z.boolean(), z.stringbool()])
+    res.status(200).json(ItemDTO.toItemListDTO(items))
+  }
 
-// Accepts 4.5 or "4.5", never "" or "abc" (z.coerce.number would turn "" into 0).
-// Max 2 decimals, between 0 and 1,000,000.
-const priceField = z
-  .union([
-    z.number(),
-    z.string().trim().regex(/^\d+(\.\d+)?$/, "Price must be a number"),
-  ])
-  .transform((value) => Number(value))
-  .pipe(
-    z
-      .number()
-      .min(0, "Price cannot be negative")
-      .max(1_000_000, "Price is too high")
-      .refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-6, {
-        message: "Price can have at most 2 decimal places",
-      })
-  )
+  // Admin: GET /items/:id
+  getById = async (req, res) => {
+    const item = await this.itemService.getItemById(req.params.id)
 
-// "image" is intentionally not here: it comes from the uploaded file (req.file),
-// so a client can never set it by sending a file name in the body
-const createItemBody = z.object({
-  name: z.string().trim().min(1, "Name is required").max(80),
-  description: z.string().trim().max(500).optional(),
-  price: priceField,
-  isAvailable: booleanField.optional(),
-  category: objectId("Invalid category id"),
-})
+    res.status(200).json(ItemDTO.toItemDTO(item))
+  }
 
-// Every field optional. "Nothing to update" is checked in the service,
-// because a request with only a new image file has an empty body.
-const updateItemBody = createItemBody.partial().extend({
-  removeImage: booleanField.optional(),
-})
+  // Admin: POST /items
+  create = async (req, res) => {
+    // req.file exists only when an image was uploaded
+    const data = req.file ? { ...req.body, image: req.file.filename } : req.body
 
-export default {
-  itemIdParams,
-  menuCategoryParams,
-  listItemsQuery,
-  createItemBody,
-  updateItemBody,
+    const item = await this.itemService.createItem(data)
+
+    res.status(201).json(ItemDTO.toItemDTO(item))
+  }
+
+  // Admin: PATCH /items/:id
+  update = async (req, res) => {
+    const data = req.file ? { ...req.body, image: req.file.filename } : req.body
+
+    const item = await this.itemService.updateItem(req.params.id, data)
+
+    res.status(200).json(ItemDTO.toItemDTO(item))
+  }
+
+  // Admin: DELETE /items/:id
+  delete = async (req, res) => {
+    await this.itemService.deleteItem(req.params.id)
+
+    res.status(204).send()
+  }
 }
+
+export default ItemController
