@@ -45,6 +45,9 @@ class CategoryRepository {
       )
     }
 
+    // The client only gets a generic message, so print the real cause here
+    console.error("CategoryRepository database error:", error)
+
     return new CategoryDatabaseError("Database operation failed", error)
   }
 

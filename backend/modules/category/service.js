@@ -16,6 +16,23 @@ class CategoryService {
     iconStorage,
     itemImageStorage,
   }) {
+    // Fail at startup with a clear message, instead of a confusing error later
+    // (for example when deleting a category)
+    const dependencies = {
+      categoryRepository,
+      itemRepository,
+      iconStorage,
+      itemImageStorage,
+    }
+
+    for (const [name, dependency] of Object.entries(dependencies)) {
+      if (!dependency) {
+        throw new Error(
+          `CategoryService is missing "${name}". Check category/module.js and app/app.route.js`
+        )
+      }
+    }
+
     this.categoryRepository = categoryRepository
     this.itemRepository = itemRepository
     this.iconStorage = iconStorage
