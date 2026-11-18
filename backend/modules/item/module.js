@@ -6,6 +6,7 @@ import ItemRoute from "./route.js"
 import ItemValidation from "./validate.js"
 import validate from "../../middlewares/validate.js"
 import upload from "../../middlewares/upload.js"
+import rateLimiter from "../../middlewares/ratelimit.js"
 import multerConfig from "../../config/multer.js"
 import FileStorage from "../../utils/file-storage.js"
 
@@ -44,6 +45,8 @@ const createItemModule = ({
     validate,
     uploadImage: upload.uploadSingle(imageUploader, "image"),
     removeUploadedFileOnError: upload.removeUploadedFileOnError,
+    publicLimiter: rateLimiter.publicLimiter,
+    adminLimiter: rateLimiter.adminLimiter,
   })
 
   return {

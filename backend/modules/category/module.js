@@ -6,6 +6,7 @@ import CategoryRoute from "./route.js"
 import CategoryValidation from "./validate.js"
 import validate from "../../middlewares/validate.js"
 import upload from "../../middlewares/upload.js"
+import rateLimiter from "../../middlewares/ratelimit.js"
 import multerConfig from "../../config/multer.js"
 import FileStorage from "../../utils/file-storage.js"
 
@@ -48,6 +49,8 @@ const createCategoryModule = ({ itemRepository }) => {
     validate,
     uploadIcon: upload.uploadSingle(iconUploader, "icon"),
     removeUploadedFileOnError: upload.removeUploadedFileOnError,
+    publicLimiter: rateLimiter.publicLimiter,
+    adminLimiter: rateLimiter.adminLimiter,
   })
 
   return {

@@ -11,6 +11,10 @@ const EXPLANATIONS = {
     "The request body is bigger than the server accepts. Send less data.",
   ROUTE_NOT_FOUND:
     "No API exists for this HTTP method and path. Check the URL and the method (GET, POST, PATCH, DELETE).",
+  RATE_LIMIT_EXCEEDED:
+    "You sent too many requests from your IP address in a short time. Wait for 'retryAfterSeconds' (also in the Retry-After header) and try again.",
+  CORS_ORIGIN_NOT_ALLOWED:
+    "This website is not allowed to call the API from a browser. Add its address to CORS_ORIGINS in the server's .env file.",
 
   UPLOAD_LIMIT_FILE_SIZE:
     "The picture is bigger than the allowed size. Category icons can be up to 500 KB and item images up to 200 KB.",
@@ -50,10 +54,12 @@ const EXPLANATIONS = {
 // Used when a code has no explanation of its own
 const EXPLANATIONS_BY_STATUS = {
   400: "The request is not valid. Check the data you sent.",
+  403: "You are not allowed to do this.",
   404: "The requested resource was not found.",
   409: "The request conflicts with data that already exists.",
   413: "The data you sent is too large.",
   415: "The type of data you sent is not supported.",
+  429: "You sent too many requests. Wait a moment and try again.",
   500: "Something went wrong on the server. This is not a problem with your request. Try again later.",
 }
 
