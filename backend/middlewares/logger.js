@@ -9,7 +9,7 @@ async function logger(req, res, next) {
         DELETE: "magenta"
     }
 
-    const color = colorMap[req.method.toString()]
+    const color = colorMap[req.method.toString()] ?? "white"
 
     console.log(`${req.method} => ${req.protocol}://${req.get("host")}${req.originalUrl}`.bold[color])
     next()

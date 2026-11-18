@@ -49,9 +49,6 @@ class ItemRepository {
       )
     }
 
-    // The client only gets a generic message, so print the real cause here
-    console.error("ItemRepository database error:", error)
-
     return new ItemDatabaseError("Database operation failed", error)
   }
 
