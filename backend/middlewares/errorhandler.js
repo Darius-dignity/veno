@@ -1,4 +1,5 @@
 import { STATUS_CODES } from "node:http"
+import env from "../config/env.js"
 
 // What happened and what the client can do about it, per error code
 const EXPLANATIONS = {
@@ -56,7 +57,7 @@ const EXPLANATIONS_BY_STATUS = {
   500: "Something went wrong on the server. This is not a problem with your request. Try again later.",
 }
 
-const isProduction = () => process.env.NODE_ENV === "production"
+const isProduction = () => env.node_env === "production"
 
 const toCode = (status) =>
   (STATUS_CODES[status] ?? "Error").toUpperCase().replace(/[^A-Z0-9]+/g, "_")
