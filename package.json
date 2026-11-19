@@ -5,9 +5,11 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "test": "npm jest",
     "start": "node backend/server.js",
-    "dev": "nodemon backend/server.js"
+    "dev": "nodemon backend/server.js",
+    "test": "node --test \"backend/tests/**/*.test.js\"",
+    "test:unit": "node --test \"backend/tests/unit/*.test.js\"",
+    "test:integration": "node --test \"backend/tests/integration/*.test.js\""
   },
   "repository": {
     "type": "git",
