@@ -87,3 +87,12 @@
     --radius-3xl: var(--border-radius-3xl);
     --radius-4xl: var(--border-radius-4xl);
 }
+
+* {
+    box-sizing: border-box;
+    direction: rtl;
+}
+
+button {
+    cursor: pointer;
+}
