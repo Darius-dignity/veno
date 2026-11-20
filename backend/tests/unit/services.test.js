@@ -1,5 +1,4 @@
-import { describe, it } from "node:test"
-import assert from "node:assert/strict"
+import { describe, it, expect } from "@jest/globals"
 import CategoryService from "../../modules/category/service.js"
 import ItemService from "../../modules/item/service.js"
 import CategoryErrors from "../../modules/category/error.js"
@@ -8,8 +7,7 @@ const A = "64b7f0a2c3d4e5f607182931"
 const B = "64b7f0a2c3d4e5f607182932"
 const ITEM = "64b7f0a2c3d4e5f607182999"
 
-const rejectsWith = (promise, code) =>
-  assert.rejects(promise, (error) => { assert.equal(error.code, code); return true })
+const rejectsWith = (promise, code) => expect(promise).rejects.toMatchObject({ code })
 
 // ------------------------------------------------------------------ category service
 const makeCategoryService = ({ categories, itemImages = [], failUpdate = false, failDelete = false } = {}) => {
@@ -45,15 +43,14 @@ const makeCategoryService = ({ categories, itemImages = [], failUpdate = false, 
 
 describe("CategoryService", () => {
   it("refuses to start with a missing dependency and names it (wiring mistakes show up at startup)", () => {
-    assert.throws(
-      () => new CategoryService({ categoryRepository: {}, iconStorage: {}, itemImageStorage: {} }),
-      /missing "itemRepository"/
-    )
+    expect(
+      () => new CategoryService({ categoryRepository: {}, iconStorage: {}, itemImageStorage: {} })
+    ).toThrow(/missing "itemRepository"/)
   })
 
   it("create: trims the name and refuses a duplicate", async () => {
     const { service } = makeCategoryService()
-    assert.equal((await service.createCategory({ name: "  Juice " })).name, "Juice")
+    expect((await service.createCategory({ name: "  Juice " })).name).toBe("Juice")
     await rejectsWith(service.createCategory({ name: "Coffee" }), "CATEGORY_ALREADY_EXISTS")
   })
 
@@ -66,56 +63,56 @@ describe("CategoryService", () => {
   it("update: renaming to another category's name is refused; keeping its own name is fine", async () => {
     const { service } = makeCategoryService()
     await rejectsWith(service.updateCategory(A, { name: "Tea" }), "CATEGORY_ALREADY_EXISTS")
-    assert.equal((await service.updateCategory(A, { name: "Coffee" })).name, "Coffee")
+    expect((await service.updateCategory(A, { name: "Coffee" })).name).toBe("Coffee")
   })
 
   it("update: a new icon replaces the old one; the old FILE is removed only AFTER the database update", async () => {
     const { service, calls } = makeCategoryService()
     const updated = await service.updateCategory(A, { icon: "new.webp" })
 
-    assert.equal(updated.icon, "new.webp")
-    assert.ok(calls.indexOf("updateById") < calls.indexOf("remove:old.svg"))
+    expect(updated.icon).toBe("new.webp")
+    expect(calls.indexOf("updateById") < calls.indexOf("remove:old.svg")).toBeTruthy()
   })
 
   it("update: removeIcon sets the icon to null and removes the file; a new file wins over removeIcon", async () => {
     const first = makeCategoryService()
-    assert.equal((await first.service.updateCategory(A, { removeIcon: true })).icon, null)
-    assert.ok(first.calls.includes("remove:old.svg"))
+    expect((await first.service.updateCategory(A, { removeIcon: true })).icon).toBe(null)
+    expect(first.calls.includes("remove:old.svg")).toBeTruthy()
 
     const second = makeCategoryService()
-    assert.equal((await second.service.updateCategory(A, { icon: "n.webp", removeIcon: true })).icon, "n.webp")
+    expect((await second.service.updateCategory(A, { icon: "n.webp", removeIcon: true })).icon).toBe("n.webp")
   })
 
   it("update: if the database update fails, the OLD icon file is NOT deleted", async () => {
     const { service, calls } = makeCategoryService({ failUpdate: true })
-    await assert.rejects(service.updateCategory(A, { icon: "new.webp" }))
-    assert.equal(calls.some((c) => c.startsWith("remove:")), false)
+    await expect(service.updateCategory(A, { icon: "new.webp" })).rejects.toThrow()
+    expect(calls.some((c) => c.startsWith("remove:"))).toBe(false)
   })
 
   it("update: changing only text does not look up the icon or touch any file", async () => {
     const { service, calls } = makeCategoryService()
     await service.updateCategory(A, { description: "x" })
-    assert.deepEqual(calls, ["updateById"])
+    expect(calls).toEqual(["updateById"])
   })
 
   it("delete: item image names are read BEFORE deleting, files are removed AFTER the database delete", async () => {
     const { service, calls } = makeCategoryService({ itemImages: ["i1.webp", "i2.webp"] })
     await service.deleteCategory(A)
 
-    assert.deepEqual(calls.slice(0, 3), ["findById", "findImages", "deleteById"])
-    assert.deepEqual(calls.slice(3).sort(), ["remove:i1.webp", "remove:i2.webp", "remove:old.svg"])
+    expect(calls.slice(0, 3)).toEqual(["findById", "findImages", "deleteById"])
+    expect(calls.slice(3).sort()).toEqual(["remove:i1.webp", "remove:i2.webp", "remove:old.svg"])
   })
 
   it("delete: if the database delete fails, NO file is removed", async () => {
     const { service, calls } = makeCategoryService({ itemImages: ["i1.webp"], failDelete: true })
-    await assert.rejects(service.deleteCategory(A))
-    assert.equal(calls.some((c) => c.startsWith("remove:")), false)
+    await expect(service.deleteCategory(A)).rejects.toThrow()
+    expect(calls.some((c) => c.startsWith("remove:"))).toBe(false)
   })
 
   it("delete: an unknown category stops before anything is deleted", async () => {
     const { service, calls } = makeCategoryService()
     await rejectsWith(service.deleteCategory("64b7f0a2c3d4e5f607189999"), "CATEGORY_NOT_FOUND")
-    assert.equal(calls.includes("deleteById"), false)
+    expect(calls.includes("deleteById")).toBe(false)
   })
 })
 
@@ -146,11 +143,9 @@ const makeItemService = ({ failUpdate = false } = {}) => {
 describe("ItemService", () => {
   it("create: a category that does not exist is refused with ITEM_CATEGORY_NOT_FOUND (400)", async () => {
     const { service } = makeItemService()
-    await assert.rejects(service.createItem({ name: "X", price: 1, category: "64b7f0a2c3d4e5f607189999" }), (e) => {
-      assert.equal(e.code, "ITEM_CATEGORY_NOT_FOUND")
-      assert.equal(e.statusCode, 400)
-      return true
-    })
+    await expect(
+      service.createItem({ name: "X", price: 1, category: "64b7f0a2c3d4e5f607189999" })
+    ).rejects.toMatchObject({ code: "ITEM_CATEGORY_NOT_FOUND", statusCode: 400 })
   })
 
   it("create: other category errors are not swallowed", async () => {
@@ -164,32 +159,30 @@ describe("ItemService", () => {
     taken.add(`${A}|Mocha`)
 
     await rejectsWith(service.createItem({ name: " Mocha ", price: 1, category: A }), "ITEM_ALREADY_EXISTS")
-    assert.equal((await service.createItem({ name: "  Cola ", price: 1, category: A })).name, "Cola")
+    expect((await service.createItem({ name: "  Cola ", price: 1, category: A })).name).toBe("Cola")
   })
 
   it("update: only price/description/availability changes cost a single database call", async () => {
     const { service, calls } = makeItemService()
     await service.updateItem(ITEM, { price: 5 })
-    assert.deepEqual(calls, ["updateById"])
+    expect(calls).toEqual(["updateById"])
   })
 
   it("update: renaming checks the name against the item's CURRENT category", async () => {
     const { service, taken } = makeItemService()
     taken.add(`${A}|Mocha`)
-    await assert.rejects(service.updateItem(ITEM, { name: "Mocha" }), (e) => {
-      assert.equal(e.code, "ITEM_ALREADY_EXISTS")
-      assert.equal(e.details.category, A)
-      return true
+    await expect(service.updateItem(ITEM, { name: "Mocha" })).rejects.toMatchObject({
+      code: "ITEM_ALREADY_EXISTS",
+      details: { category: A },
     })
   })
 
   it("update: moving checks the item's CURRENT name in the NEW category", async () => {
     const { service, taken } = makeItemService()
     taken.add(`${B}|Latte`)
-    await assert.rejects(service.updateItem(ITEM, { category: B }), (e) => {
-      assert.equal(e.code, "ITEM_ALREADY_EXISTS")
-      assert.equal(e.details.name, "Latte")
-      return true
+    await expect(service.updateItem(ITEM, { category: B })).rejects.toMatchObject({
+      code: "ITEM_ALREADY_EXISTS",
+      details: { name: "Latte" },
     })
   })
 
@@ -206,29 +199,29 @@ describe("ItemService", () => {
   it("update: new image replaces the old (file removed after the database update); removeImage clears it", async () => {
     const { service, calls, items } = makeItemService()
     await service.updateItem(ITEM, { image: "new.webp" })
-    assert.ok(calls.indexOf("updateById") < calls.indexOf("remove:old.webp"))
+    expect(calls.indexOf("updateById") < calls.indexOf("remove:old.webp")).toBeTruthy()
 
     await service.updateItem(ITEM, { removeImage: true })
-    assert.equal(items[ITEM].image, null)
-    assert.ok(calls.includes("remove:new.webp"))
+    expect(items[ITEM].image).toBe(null)
+    expect(calls.includes("remove:new.webp")).toBeTruthy()
   })
 
   it("update: if the database update fails the old image file is NOT deleted", async () => {
     const { service, calls } = makeItemService({ failUpdate: true })
-    await assert.rejects(service.updateItem(ITEM, { image: "new.webp" }))
-    assert.equal(calls.some((c) => c.startsWith("remove:")), false)
+    await expect(service.updateItem(ITEM, { image: "new.webp" })).rejects.toThrow()
+    expect(calls.some((c) => c.startsWith("remove:"))).toBe(false)
   })
 
   it("public menu: an inactive or unknown category is a 404 (hidden from customers)", async () => {
     const { service } = makeItemService()
     await rejectsWith(service.getMenuItems(B), "CATEGORY_NOT_FOUND")
     await rejectsWith(service.getMenuItems("64b7f0a2c3d4e5f607189999"), "CATEGORY_NOT_FOUND")
-    assert.deepEqual(await service.getMenuItems(A), [])
+    expect(await service.getMenuItems(A)).toEqual([])
   })
 
   it("delete: the image file of the item is removed", async () => {
     const { service, calls } = makeItemService()
     await service.deleteItem(ITEM)
-    assert.ok(calls.includes("remove:old.webp"))
+    expect(calls.includes("remove:old.webp")).toBeTruthy()
   })
 })

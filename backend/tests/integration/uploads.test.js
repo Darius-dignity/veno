@@ -1,13 +1,12 @@
 // Real multer + real files on disk. Every file these tests create is deleted afterwards.
-import { describe, it, before, beforeEach, afterEach, after } from "node:test"
-import assert from "node:assert/strict"
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "@jest/globals"
 import fs from "node:fs"
 import { startApp } from "../helpers/test-app.js"
 import { buildForm, file, webp, svg, png, html, trackUploads, listUploads, pathOfUrl } from "../helpers/files.js"
 
 let app, uploads
-before(async () => { app = await startApp() })
-after(() => app.close())
+beforeAll(async () => { app = await startApp() })
+afterAll(() => app.close())
 beforeEach(() => { app.fakeDb.reset(); uploads = trackUploads() })
 afterEach(() => uploads.cleanup())
 
@@ -23,80 +22,80 @@ describe("category icon", () => {
     const first = await postCategory({ name: "A" }, icon())
     const second = await postCategory({ name: "B" }, icon(svg(), "x.svg", "image/svg+xml"))
 
-    assert.equal(first.status, 201)
-    assert.match(first.body.icon, /^\/images\/category\/[0-9a-f-]{36}\.webp$/)
-    assert.match(second.body.icon, /^\/images\/category\/[0-9a-f-]{36}\.svg$/)
-    assert.notEqual(first.body.icon, second.body.icon)
-    assert.ok(onDisk(first.body.icon) && onDisk(second.body.icon))
+    expect(first.status).toBe(201)
+    expect(first.body.icon).toMatch(/^\/images\/category\/[0-9a-f-]{36}\.webp$/)
+    expect(second.body.icon).toMatch(/^\/images\/category\/[0-9a-f-]{36}\.svg$/)
+    expect(first.body.icon).not.toBe(second.body.icon)
+    expect(onDisk(first.body.icon) && onDisk(second.body.icon)).toBeTruthy()
   })
 
   it("the icon is optional: JSON, a form without a file and an empty file field all work", async () => {
-    assert.equal((await app.request("POST", "/api/categories", { json: { name: "A" } })).body.icon, null)
-    assert.equal((await postCategory({ name: "B" })).body.icon, null)
-    assert.equal((await postCategory({ name: "C" }, icon(Buffer.alloc(0), "", "application/octet-stream"))).body.icon, null)
-    assert.deepEqual(uploads.created("category"), [])
+    expect((await app.request("POST", "/api/categories", { json: { name: "A" } })).body.icon).toBe(null)
+    expect((await postCategory({ name: "B" })).body.icon).toBe(null)
+    expect((await postCategory({ name: "C" }, icon(Buffer.alloc(0), "", "application/octet-stream"))).body.icon).toBe(null)
+    expect(uploads.created("category")).toEqual([])
   })
 
   it("size limit is 500 KB: exactly 500 KB is accepted, one byte more is 413 'too big' and nothing is saved", async () => {
-    assert.equal((await postCategory({ name: "A" }, icon(webp(500 * KB)))).status, 201)
+    expect((await postCategory({ name: "A" }, icon(webp(500 * KB)))).status).toBe(201)
     uploads.cleanup()
 
     const { status, body } = await postCategory({ name: "B" }, icon(webp(500 * KB + 1)))
-    assert.equal(status, 413)
-    assert.equal(body.code, "UPLOAD_LIMIT_FILE_SIZE")
-    assert.equal(body.message, "The size of this picture is too big")
-    assert.deepEqual(uploads.created("category"), [])
+    expect(status).toBe(413)
+    expect(body.code).toBe("UPLOAD_LIMIT_FILE_SIZE")
+    expect(body.message).toBe("The size of this picture is too big")
+    expect(uploads.created("category")).toEqual([])
   })
 
   it("wrong file types and fake content are refused and nothing is saved", async () => {
     const png415 = await postCategory({ name: "A" }, icon(png(), "p.png", "image/png"))
-    assert.equal(png415.status, 415)
-    assert.equal(png415.body.code, "UPLOAD_INVALID_FILE_TYPE")
+    expect(png415.status).toBe(415)
+    expect(png415.body.code).toBe("UPLOAD_INVALID_FILE_TYPE")
 
     const fakeSvg = await postCategory({ name: "B" }, icon(html(), "f.svg", "image/svg+xml"))
-    assert.equal(fakeSvg.status, 415)
-    assert.equal(fakeSvg.body.code, "UPLOAD_INVALID_FILE_CONTENT")
+    expect(fakeSvg.status).toBe(415)
+    expect(fakeSvg.body.code).toBe("UPLOAD_INVALID_FILE_CONTENT")
 
     const fakeWebp = await postCategory({ name: "C" }, icon(png(), "f.webp", "image/webp"))
-    assert.equal(fakeWebp.status, 415)
+    expect(fakeWebp.status).toBe(415)
 
-    assert.deepEqual(uploads.created("category"), [])
+    expect(uploads.created("category")).toEqual([])
   })
 
   it("two files, or a file under the wrong field name, are refused (400) and nothing is saved", async () => {
     const two = await app.request("POST", "/api/categories", { form: (() => { const f = buildForm({ name: "A" }); f.append("icon", file(webp(), "1.webp", "image/webp")); f.append("icon", file(webp(), "2.webp", "image/webp")); return f })() })
     const wrong = await postCategory({ name: "B" }, { picture: file(webp(), "w.webp", "image/webp") })
 
-    assert.equal(two.status, 400)
-    assert.equal(wrong.status, 400)
-    assert.deepEqual(uploads.created("category"), [])
+    expect(two.status).toBe(400)
+    expect(wrong.status).toBe(400)
+    expect(uploads.created("category")).toEqual([])
   })
 
   it("if the request fails AFTER the upload, the picture is deleted: missing data and duplicate name", async () => {
     const missing = await postCategory({ description: "no name" }, icon())
-    assert.equal(missing.status, 400)
-    assert.deepEqual(uploads.created("category"), [])
+    expect(missing.status).toBe(400)
+    expect(uploads.created("category")).toEqual([])
 
     const first = await postCategory({ name: "Coffee" }, icon())
     const duplicate = await postCategory({ name: "Coffee" }, icon())
 
-    assert.equal(duplicate.status, 409)
-    assert.equal(uploads.created("category").length, 1, "only the first icon may remain")
-    assert.ok(onDisk(first.body.icon))
+    expect(duplicate.status).toBe(409)
+    expect(uploads.created("category").length).toBe(1)
+    expect(onDisk(first.body.icon)).toBeTruthy()
   })
 
   it("replacing the icon deletes the old file; removeIcon deletes it and sets null", async () => {
     const { body: created } = await postCategory({ name: "Coffee" }, icon())
 
     const replaced = await patchCategory(created.id, {}, icon(svg(), "n.svg", "image/svg+xml"))
-    assert.equal(replaced.status, 200)
-    assert.equal(onDisk(created.icon), false)
-    assert.ok(onDisk(replaced.body.icon))
+    expect(replaced.status).toBe(200)
+    expect(onDisk(created.icon)).toBe(false)
+    expect(onDisk(replaced.body.icon)).toBeTruthy()
 
     const removed = await patchCategory(created.id, { removeIcon: "true" })
-    assert.equal(removed.body.icon, null)
-    assert.equal(onDisk(replaced.body.icon), false)
-    assert.deepEqual(uploads.created("category"), [])
+    expect(removed.body.icon).toBe(null)
+    expect(onDisk(replaced.body.icon)).toBe(false)
+    expect(uploads.created("category")).toEqual([])
   })
 
   it("a failed update keeps the old icon and deletes the new picture", async () => {
@@ -105,9 +104,9 @@ describe("category icon", () => {
 
     const failed = await patchCategory(coffee.id, { name: "Tea" }, icon(svg(), "n.svg", "image/svg+xml"))
 
-    assert.equal(failed.status, 409)
-    assert.ok(onDisk(coffee.icon), "the old icon must still exist")
-    assert.equal(uploads.created("category").length, 1)
+    expect(failed.status).toBe(409)
+    expect(onDisk(coffee.icon)).toBeTruthy()
+    expect(uploads.created("category").length).toBe(1)
   })
 })
 
@@ -121,49 +120,49 @@ describe("item image", () => {
     const withImage = await postItem({ name: "Latte" }, image())
     const without = await postItem({ name: "Mocha" })
 
-    assert.match(withImage.body.image, /^\/images\/item\/[0-9a-f-]{36}\.webp$/)
-    assert.ok(onDisk(withImage.body.image))
-    assert.equal(without.body.image, null)
+    expect(withImage.body.image).toMatch(/^\/images\/item\/[0-9a-f-]{36}\.webp$/)
+    expect(onDisk(withImage.body.image)).toBeTruthy()
+    expect(without.body.image).toBe(null)
   })
 
   it("size limit is 200 KB: exactly 200 KB is accepted, one byte more is 413", async () => {
-    assert.equal((await postItem({ name: "A" }, image(webp(200 * KB)))).status, 201)
+    expect((await postItem({ name: "A" }, image(webp(200 * KB)))).status).toBe(201)
     uploads.cleanup()
 
     const { status, body } = await postItem({ name: "B" }, image(webp(200 * KB + 1)))
-    assert.equal(status, 413)
-    assert.equal(body.message, "The size of this picture is too big")
-    assert.deepEqual(uploads.created("item"), [])
+    expect(status).toBe(413)
+    expect(body.message).toBe("The size of this picture is too big")
+    expect(uploads.created("item")).toEqual([])
   })
 
   it("wrong type and fake content are refused; a failure after the upload deletes the picture", async () => {
-    assert.equal((await postItem({ name: "A" }, image(png(), "p.png", "image/png"))).status, 415)
-    assert.equal((await postItem({ name: "B" }, image(html(), "f.svg", "image/svg+xml"))).status, 415)
+    expect((await postItem({ name: "A" }, image(png(), "p.png", "image/png"))).status).toBe(415)
+    expect((await postItem({ name: "B" }, image(html(), "f.svg", "image/svg+xml"))).status).toBe(415)
 
     const noPrice = await app.request("POST", "/api/items", { form: buildForm({ name: "C", category: categoryId }, image()) })
-    assert.equal(noPrice.status, 400)
+    expect(noPrice.status).toBe(400)
 
     const noCategory = await postItem({ name: "D", category: "64b7f0a2c3d4e5f607189999" }, image())
-    assert.equal(noCategory.body.code, "ITEM_CATEGORY_NOT_FOUND")
+    expect(noCategory.body.code).toBe("ITEM_CATEGORY_NOT_FOUND")
 
-    assert.deepEqual(uploads.created("item"), [])
+    expect(uploads.created("item")).toEqual([])
   })
 
   it("replace, remove and delete all clean up the files", async () => {
     const { body: created } = await postItem({ name: "Latte" }, image())
 
     const replaced = await app.request("PATCH", `/api/items/${created.id}`, { form: buildForm({}, image(svg(), "n.svg", "image/svg+xml")) })
-    assert.equal(onDisk(created.image), false)
-    assert.ok(onDisk(replaced.body.image))
+    expect(onDisk(created.image)).toBe(false)
+    expect(onDisk(replaced.body.image)).toBeTruthy()
 
     const removed = await app.request("PATCH", `/api/items/${created.id}`, { form: buildForm({ removeImage: "true" }) })
-    assert.equal(removed.body.image, null)
-    assert.equal(onDisk(replaced.body.image), false)
+    expect(removed.body.image).toBe(null)
+    expect(onDisk(replaced.body.image)).toBe(false)
 
     const again = await app.request("PATCH", `/api/items/${created.id}`, { form: buildForm({}, image()) })
-    assert.equal((await app.request("DELETE", `/api/items/${created.id}`)).status, 204)
-    assert.equal(onDisk(again.body.image), false)
-    assert.deepEqual(uploads.created("item"), [])
+    expect((await app.request("DELETE", `/api/items/${created.id}`)).status).toBe(204)
+    expect(onDisk(again.body.image)).toBe(false)
+    expect(uploads.created("item")).toEqual([])
   })
 })
 
@@ -176,12 +175,12 @@ describe("deleting a category cleans up every picture that belonged to it", () =
     const latte = (await item("Latte", coffee.id, image())).body
     const green = (await item("Green tea", tea.id, image())).body
 
-    assert.equal((await app.request("DELETE", `/api/categories/${coffee.id}`)).status, 204)
+    expect((await app.request("DELETE", `/api/categories/${coffee.id}`)).status).toBe(204)
 
-    assert.equal(onDisk(coffee.icon), false, "category icon")
-    assert.equal(onDisk(latte.image), false, "image of its item")
-    assert.ok(onDisk(tea.icon), "other category's icon stays")
-    assert.ok(onDisk(green.image), "other category's item image stays")
-    assert.equal(listUploads("item").includes(pathOfUrl(green.image).split(/[\\/]/).pop()), true)
+    expect(onDisk(coffee.icon)).toBe(false)
+    expect(onDisk(latte.image)).toBe(false)
+    expect(onDisk(tea.icon)).toBeTruthy()
+    expect(onDisk(green.image)).toBeTruthy()
+    expect(listUploads("item").includes(pathOfUrl(green.image).split(/[\\/]/).pop())).toBe(true)
   })
 })

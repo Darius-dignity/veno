@@ -1,11 +1,10 @@
-import { describe, it, before, beforeEach, after } from "node:test"
-import assert from "node:assert/strict"
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "@jest/globals"
 import { startApp } from "../helpers/test-app.js"
 import { buildForm } from "../helpers/files.js"
 
 let app, coffee, tea
-before(async () => { app = await startApp() })
-after(() => app.close())
+beforeAll(async () => { app = await startApp() })
+afterAll(() => app.close())
 
 beforeEach(async () => {
   app.fakeDb.reset()
@@ -21,48 +20,51 @@ describe("POST /api/items", () => {
   it("creates an item with the defaults (201)", async () => {
     const { status, body } = await item("Latte", coffee)
 
-    assert.equal(status, 201)
-    assert.equal(body.name, "Latte")
-    assert.equal(body.price, 4.5)
-    assert.equal(body.description, "")
-    assert.equal(body.isAvailable, true)
-    assert.equal(body.image, null)
-    assert.equal(body.category, coffee)
-    assert.equal("_id" in body, false)
+    expect(status).toBe(201)
+    expect(body.name).toBe("Latte")
+    expect(body.price).toBe(4.5)
+    expect(body.description).toBe("")
+    expect(body.isAvailable).toBe(true)
+    expect(body.image).toBe(null)
+    expect(body.category).toBe(coffee)
+    expect("_id" in body).toBe(false)
   })
 
   it("a price sent as form text becomes a number (multipart without a file)", async () => {
     const { status, body } = await app.request("POST", "/api/items", { form: buildForm({ name: "Mocha", price: "5.25", category: coffee, isAvailable: "false" }) })
 
-    assert.equal(status, 201)
-    assert.equal(body.price, 5.25)
-    assert.equal(body.isAvailable, false)
+    expect(status).toBe(201)
+    expect(body.price).toBe(5.25)
+    expect(body.isAvailable).toBe(false)
   })
 
   it("bad prices are refused with 400 (missing, empty, negative, too many decimals)", async () => {
-    for (const price of [undefined, "", -1, 4.567, "abc"]) {
-      const { status, body } = await createItem({ name: "X", price, category: coffee })
+    const prices = [undefined, "", -1, 4.567, "abc"]
+    const results = []
 
-      assert.equal(status, 400, `price ${JSON.stringify(price)}`)
-      assert.equal(body.code, "VALIDATION_ERROR")
+    for (const price of prices) {
+      const { status, body } = await createItem({ name: "X", price, category: coffee })
+      results.push([status, body.code])
     }
+
+    expect(results).toEqual(prices.map(() => [400, "VALIDATION_ERROR"]))
   })
 
   it("the category must exist: 400 ITEM_CATEGORY_NOT_FOUND", async () => {
     const { status, body } = await item("Latte", NOT_FOUND)
 
-    assert.equal(status, 400)
-    assert.equal(body.code, "ITEM_CATEGORY_NOT_FOUND")
+    expect(status).toBe(400)
+    expect(body.code).toBe("ITEM_CATEGORY_NOT_FOUND")
   })
 
   it("the same name twice in one category is 409; the same name in ANOTHER category is fine", async () => {
     await item("Latte", coffee)
 
     const duplicate = await item("Latte", coffee)
-    assert.equal(duplicate.status, 409)
-    assert.equal(duplicate.body.code, "ITEM_ALREADY_EXISTS")
+    expect(duplicate.status).toBe(409)
+    expect(duplicate.body.code).toBe("ITEM_ALREADY_EXISTS")
 
-    assert.equal((await item("Latte", tea)).status, 201)
+    expect((await item("Latte", tea)).status).toBe(201)
   })
 })
 
@@ -70,12 +72,12 @@ describe("reading items", () => {
   it("GET /:id returns it; unknown id is 404; bad id is 400", async () => {
     const { body: created } = await item("Latte", coffee)
 
-    assert.equal((await app.request("GET", `/api/items/${created.id}`)).body.name, "Latte")
+    expect((await app.request("GET", `/api/items/${created.id}`)).body.name).toBe("Latte")
 
     const missing = await app.request("GET", `/api/items/${NOT_FOUND}`)
-    assert.equal(missing.status, 404)
-    assert.equal(missing.body.code, "ITEM_NOT_FOUND")
-    assert.equal((await app.request("GET", "/api/items/abc")).status, 400)
+    expect(missing.status).toBe(404)
+    expect(missing.body.code).toBe("ITEM_NOT_FOUND")
+    expect((await app.request("GET", "/api/items/abc")).status).toBe(400)
   })
 
   it("the admin list can be filtered by category and availability", async () => {
@@ -85,9 +87,9 @@ describe("reading items", () => {
 
     const names = async (query) => (await app.request("GET", `/api/items${query}`)).body.map((i) => i.name)
 
-    assert.deepEqual(await names(`?category=${coffee}`), ["Hidden", "Latte"])
-    assert.deepEqual(await names(`?category=${coffee}&isAvailable=true`), ["Latte"])
-    assert.equal((await app.request("GET", "/api/items?category=abc")).status, 400)
+    expect(await names(`?category=${coffee}`)).toEqual(["Hidden", "Latte"])
+    expect(await names(`?category=${coffee}&isAvailable=true`)).toEqual(["Latte"])
+    expect((await app.request("GET", "/api/items?category=abc")).status).toBe(400)
   })
 
   it("the public menu shows only AVAILABLE items with only the menu fields, sorted by name", async () => {
@@ -97,21 +99,21 @@ describe("reading items", () => {
 
     const { status, body } = await app.request("GET", `/api/items/menu/${coffee}`)
 
-    assert.equal(status, 200)
-    assert.deepEqual(body.map((i) => i.name), ["Latte", "Mocha"])
-    for (const row of body) assert.deepEqual(Object.keys(row), ["id", "name", "description", "price", "image"])
+    expect(status).toBe(200)
+    expect(body.map((i) => i.name)).toEqual(["Latte", "Mocha"])
+    for (const row of body) expect(Object.keys(row)).toEqual(["id", "name", "description", "price", "image"])
   })
 
   it("the public menu: an empty category is [], an inactive or unknown category is 404", async () => {
-    assert.deepEqual((await app.request("GET", `/api/items/menu/${coffee}`)).body, [])
+    expect((await app.request("GET", `/api/items/menu/${coffee}`)).body).toEqual([])
 
     await app.request("PATCH", `/api/categories/${coffee}`, { json: { isActive: false } })
     const inactive = await app.request("GET", `/api/items/menu/${coffee}`)
-    assert.equal(inactive.status, 404)
-    assert.equal(inactive.body.code, "CATEGORY_NOT_FOUND")
+    expect(inactive.status).toBe(404)
+    expect(inactive.body.code).toBe("CATEGORY_NOT_FOUND")
 
-    assert.equal((await app.request("GET", `/api/items/menu/${NOT_FOUND}`)).status, 404)
-    assert.equal((await app.request("GET", "/api/items/menu/abc")).status, 400)
+    expect((await app.request("GET", `/api/items/menu/${NOT_FOUND}`)).status).toBe(404)
+    expect((await app.request("GET", "/api/items/menu/abc")).status).toBe(400)
   })
 })
 
@@ -120,39 +122,39 @@ describe("PATCH /api/items/:id", () => {
     const { body: created } = await item("Latte", coffee)
     const { status, body } = await app.request("PATCH", `/api/items/${created.id}`, { json: { price: 6 } })
 
-    assert.equal(status, 200)
-    assert.equal(body.price, 6)
-    assert.equal(body.name, "Latte")
+    expect(status).toBe(200)
+    expect(body.price).toBe(6)
+    expect(body.name).toBe("Latte")
   })
 
   it("sending nothing is 400 ITEM_EMPTY_UPDATE", async () => {
     const { body: created } = await item("Latte", coffee)
     const { status, body } = await app.request("PATCH", `/api/items/${created.id}`, { json: {} })
 
-    assert.equal(status, 400)
-    assert.equal(body.code, "ITEM_EMPTY_UPDATE")
+    expect(status).toBe(400)
+    expect(body.code).toBe("ITEM_EMPTY_UPDATE")
   })
 
   it("renaming into an existing name of the same category is 409", async () => {
     await item("Mocha", coffee)
     const { body: latte } = await item("Latte", coffee)
 
-    assert.equal((await app.request("PATCH", `/api/items/${latte.id}`, { json: { name: "Mocha" } })).status, 409)
+    expect((await app.request("PATCH", `/api/items/${latte.id}`, { json: { name: "Mocha" } })).status).toBe(409)
   })
 
   it("moving to another category: fine, unless that category already has the name (409) or does not exist (400)", async () => {
     const { body: latte } = await item("Latte", coffee)
 
     const moved = await app.request("PATCH", `/api/items/${latte.id}`, { json: { category: tea } })
-    assert.equal(moved.body.category, tea)
+    expect(moved.body.category).toBe(tea)
 
     await item("Latte", coffee) // the name is free in coffee again
     const clash = await app.request("PATCH", `/api/items/${latte.id}`, { json: { category: coffee } })
-    assert.equal(clash.status, 409)
+    expect(clash.status).toBe(409)
 
     const unknown = await app.request("PATCH", `/api/items/${latte.id}`, { json: { category: NOT_FOUND } })
-    assert.equal(unknown.status, 400)
-    assert.equal(unknown.body.code, "ITEM_CATEGORY_NOT_FOUND")
+    expect(unknown.status).toBe(400)
+    expect(unknown.body.code).toBe("ITEM_CATEGORY_NOT_FOUND")
   })
 })
 
@@ -160,10 +162,10 @@ describe("DELETE /api/items/:id", () => {
   it("deletes it (204); a second delete is 404", async () => {
     const { body: created } = await item("Latte", coffee)
 
-    assert.equal((await app.request("DELETE", `/api/items/${created.id}`)).status, 204)
+    expect((await app.request("DELETE", `/api/items/${created.id}`)).status).toBe(204)
 
     const again = await app.request("DELETE", `/api/items/${created.id}`)
-    assert.equal(again.status, 404)
-    assert.equal(again.body.code, "ITEM_NOT_FOUND")
+    expect(again.status).toBe(404)
+    expect(again.body.code).toBe("ITEM_NOT_FOUND")
   })
 })

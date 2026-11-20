@@ -1,5 +1,4 @@
-import { describe, it } from "node:test"
-import assert from "node:assert/strict"
+import { describe, it, expect } from "@jest/globals"
 import CategoryValidation from "../../modules/category/validate.js"
 import ItemValidation from "../../modules/item/validate.js"
 
@@ -13,36 +12,36 @@ describe("category validation", () => {
     CategoryValidation
 
   it("name is required, trimmed and limited to 50 characters", () => {
-    assert.equal(createCategoryBody.safeParse({}).success, false)
-    assert.equal(createCategoryBody.safeParse({ name: "   " }).success, false)
-    assert.equal(createCategoryBody.safeParse({ name: "x".repeat(51) }).success, false)
-    assert.equal(createCategoryBody.safeParse({ name: 5 }).success, false)
-    assert.equal(createCategoryBody.parse({ name: "  Coffee  " }).name, "Coffee")
+    expect(createCategoryBody.safeParse({}).success).toBe(false)
+    expect(createCategoryBody.safeParse({ name: "   " }).success).toBe(false)
+    expect(createCategoryBody.safeParse({ name: "x".repeat(51) }).success).toBe(false)
+    expect(createCategoryBody.safeParse({ name: 5 }).success).toBe(false)
+    expect(createCategoryBody.parse({ name: "  Coffee  " }).name).toBe("Coffee")
   })
 
   it("isActive accepts real booleans (JSON) and 'true'/'false' text (form-data)", () => {
-    assert.equal(createCategoryBody.parse({ name: "A", isActive: false }).isActive, false)
-    assert.equal(createCategoryBody.parse(multipart({ name: "A", isActive: "false" })).isActive, false)
-    assert.equal(createCategoryBody.parse(multipart({ name: "A", isActive: "true" })).isActive, true)
-    assert.equal(createCategoryBody.safeParse({ name: "A", isActive: "maybe" }).success, false)
+    expect(createCategoryBody.parse({ name: "A", isActive: false }).isActive).toBe(false)
+    expect(createCategoryBody.parse(multipart({ name: "A", isActive: "false" })).isActive).toBe(false)
+    expect(createCategoryBody.parse(multipart({ name: "A", isActive: "true" })).isActive).toBe(true)
+    expect(createCategoryBody.safeParse({ name: "A", isActive: "maybe" }).success).toBe(false)
   })
 
   it("a client can never set the icon through the body (it comes only from the file)", () => {
     const parsed = createCategoryBody.parse({ name: "A", icon: "../../evil.svg" })
-    assert.equal("icon" in parsed, false)
+    expect("icon" in parsed).toBe(false)
   })
 
   it("update: every field optional, removeIcon understands form text", () => {
-    assert.deepEqual(updateCategoryBody.parse({}), {})
-    assert.equal(updateCategoryBody.parse(multipart({ removeIcon: "true" })).removeIcon, true)
-    assert.equal(updateCategoryBody.safeParse({ name: "" }).success, false)
+    expect(updateCategoryBody.parse({})).toEqual({})
+    expect(updateCategoryBody.parse(multipart({ removeIcon: "true" })).removeIcon).toBe(true)
+    expect(updateCategoryBody.safeParse({ name: "" }).success).toBe(false)
   })
 
   it("ids must be 24 hex characters; isActive filter must be true/false", () => {
-    assert.equal(categoryIdParams.safeParse({ id: ID }).success, true)
-    assert.equal(categoryIdParams.safeParse({ id: "abc" }).success, false)
-    assert.equal(listCategoriesQuery.parse({ isActive: "true" }).isActive, true)
-    assert.equal(listCategoriesQuery.safeParse({ isActive: "maybe" }).success, false)
+    expect(categoryIdParams.safeParse({ id: ID }).success).toBe(true)
+    expect(categoryIdParams.safeParse({ id: "abc" }).success).toBe(false)
+    expect(listCategoriesQuery.parse({ isActive: "true" }).isActive).toBe(true)
+    expect(listCategoriesQuery.safeParse({ isActive: "maybe" }).success).toBe(false)
   })
 })
 
@@ -53,47 +52,48 @@ describe("item validation", () => {
   const item = (price) => ({ name: "Latte", price, category: ID })
 
   it("price accepts numbers and numeric text (form-data), including 0", () => {
-    assert.equal(createItemBody.parse(item(4.5)).price, 4.5)
-    assert.equal(createItemBody.parse(item("4.5")).price, 4.5)
-    assert.equal(createItemBody.parse(item("5.25")).price, 5.25)
-    assert.equal(createItemBody.parse(item(0)).price, 0)
-    assert.equal(createItemBody.parse(item(0.3)).price, 0.3)
+    expect(createItemBody.parse(item(4.5)).price).toBe(4.5)
+    expect(createItemBody.parse(item("4.5")).price).toBe(4.5)
+    expect(createItemBody.parse(item("5.25")).price).toBe(5.25)
+    expect(createItemBody.parse(item(0)).price).toBe(0)
+    expect(createItemBody.parse(item(0.3)).price).toBe(0.3)
   })
 
   it("price rejects empty, text, negative, too many decimals, too high and wrong types", () => {
-    for (const bad of ["", "abc", "-5", "1e3", "4,5", -1, 4.567, 1000001, null, true, undefined]) {
-      assert.equal(createItemBody.safeParse(item(bad)).success, false, `price ${JSON.stringify(bad)} must be refused`)
-    }
+    const bad = ["", "abc", "-5", "1e3", "4,5", -1, 4.567, 1000001, null, true, undefined]
+    const wronglyAccepted = bad.filter((price) => createItemBody.safeParse(item(price)).success)
+
+    expect(wronglyAccepted).toEqual([]) // a value listed here was accepted but must be refused
   })
 
   it("an empty price is refused, not silently turned into 0", () => {
-    assert.equal(createItemBody.safeParse(multipart({ name: "A", price: "", category: ID })).success, false)
+    expect(createItemBody.safeParse(multipart({ name: "A", price: "", category: ID })).success).toBe(false)
   })
 
   it("name, description and category rules", () => {
-    assert.equal(createItemBody.safeParse({ price: 1, category: ID }).success, false)
-    assert.equal(createItemBody.safeParse({ name: "x".repeat(81), price: 1, category: ID }).success, false)
-    assert.equal(createItemBody.safeParse({ name: "A", price: 1, category: ID, description: "x".repeat(501) }).success, false)
-    assert.equal(createItemBody.safeParse({ name: "A", price: 1 }).success, false)
-    assert.equal(createItemBody.safeParse({ name: "A", price: 1, category: "abc" }).success, false)
+    expect(createItemBody.safeParse({ price: 1, category: ID }).success).toBe(false)
+    expect(createItemBody.safeParse({ name: "x".repeat(81), price: 1, category: ID }).success).toBe(false)
+    expect(createItemBody.safeParse({ name: "A", price: 1, category: ID, description: "x".repeat(501) }).success).toBe(false)
+    expect(createItemBody.safeParse({ name: "A", price: 1 }).success).toBe(false)
+    expect(createItemBody.safeParse({ name: "A", price: 1, category: "abc" }).success).toBe(false)
   })
 
   it("a client can never set the image through the body", () => {
     const parsed = createItemBody.parse({ ...item(1), image: "../../evil.webp" })
-    assert.equal("image" in parsed, false)
+    expect("image" in parsed).toBe(false)
   })
 
   it("update: partial, price still checked, removeImage understands form text", () => {
-    assert.deepEqual(updateItemBody.parse({}), {})
-    assert.equal(updateItemBody.parse(multipart({ price: "6.5" })).price, 6.5)
-    assert.equal(updateItemBody.safeParse({ price: "x" }).success, false)
-    assert.equal(updateItemBody.parse(multipart({ removeImage: "true" })).removeImage, true)
+    expect(updateItemBody.parse({})).toEqual({})
+    expect(updateItemBody.parse(multipart({ price: "6.5" })).price).toBe(6.5)
+    expect(updateItemBody.safeParse({ price: "x" }).success).toBe(false)
+    expect(updateItemBody.parse(multipart({ removeImage: "true" })).removeImage).toBe(true)
   })
 
   it("params and list filters", () => {
-    assert.equal(itemIdParams.safeParse({ id: "abc" }).success, false)
-    assert.equal(menuCategoryParams.safeParse({ categoryId: ID }).success, true)
-    assert.equal(listItemsQuery.parse({ category: ID, isAvailable: "false" }).isAvailable, false)
-    assert.equal(listItemsQuery.safeParse({ category: "abc" }).success, false)
+    expect(itemIdParams.safeParse({ id: "abc" }).success).toBe(false)
+    expect(menuCategoryParams.safeParse({ categoryId: ID }).success).toBe(true)
+    expect(listItemsQuery.parse({ category: ID, isAvailable: "false" }).isAvailable).toBe(false)
+    expect(listItemsQuery.safeParse({ category: "abc" }).success).toBe(false)
   })
 })

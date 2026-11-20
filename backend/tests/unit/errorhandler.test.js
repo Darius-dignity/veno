@@ -1,5 +1,4 @@
-import { describe, it, mock, afterEach } from "node:test"
-import assert from "node:assert/strict"
+import { describe, it, expect, afterEach, jest } from "@jest/globals"
 import errorHandler from "../../middlewares/errorhandler.js"
 import notFound from "../../middlewares/notfound.js"
 
@@ -18,7 +17,7 @@ const makeRes = () => {
 
 const run = (error, req = makeReq()) => {
   const res = makeRes()
-  errorHandler(error, req, res, () => assert.fail("next() must not be called"))
+  errorHandler(error, req, res, () => { throw new Error("next() must not be called") })
   return res
 }
 
@@ -29,7 +28,7 @@ const withEnv = (value, fn) => {
 }
 
 describe("error handler", () => {
-  afterEach(() => mock.restoreAll())
+  afterEach(() => jest.restoreAllMocks())
 
   it("turns one of our errors into the JSON format, keeping status, code and details", () => {
     const error = Object.assign(new Error("A category with this name already exists"), {
@@ -38,89 +37,89 @@ describe("error handler", () => {
 
     const res = run(error, makeReq("POST", "/api/categories"))
 
-    assert.equal(res.code, 409)
-    assert.equal(res.body.success, false)
-    assert.equal(res.body.status, 409)
-    assert.equal(res.body.code, "CATEGORY_ALREADY_EXISTS")
-    assert.equal(res.body.error, "Conflict")
-    assert.equal(res.body.message, "A category with this name already exists")
-    assert.deepEqual(res.body.details, { name: "Coffee" })
-    assert.ok(res.body.explanation.length > 10)
-    assert.equal(res.body.path, "/api/categories")
-    assert.equal(res.body.method, "POST")
-    assert.ok(!Number.isNaN(Date.parse(res.body.timestamp)))
-    assert.equal("debug" in res.body, false)
+    expect(res.code).toBe(409)
+    expect(res.body.success).toBe(false)
+    expect(res.body.status).toBe(409)
+    expect(res.body.code).toBe("CATEGORY_ALREADY_EXISTS")
+    expect(res.body.error).toBe("Conflict")
+    expect(res.body.message).toBe("A category with this name already exists")
+    expect(res.body.details).toEqual({ name: "Coffee" })
+    expect(res.body.explanation.length > 10).toBeTruthy()
+    expect(res.body.path).toBe("/api/categories")
+    expect(res.body.method).toBe("POST")
+    expect(!Number.isNaN(Date.parse(res.body.timestamp))).toBeTruthy()
+    expect("debug" in res.body).toBe(false)
   })
 
   it("does not echo the query string back (it may contain secrets)", () => {
     const res = run(Object.assign(new Error("x"), { statusCode: 400, code: "X" }), makeReq("GET", "/api/x?token=secret"))
-    assert.equal(res.body.path, "/api/x")
-    assert.equal(JSON.stringify(res.body).includes("secret"), false)
+    expect(res.body.path).toBe("/api/x")
+    expect(JSON.stringify(res.body).includes("secret")).toBe(false)
   })
 
   it("an unexpected bug becomes a generic 500 and the internal message is never shown", () => {
-    mock.method(console, "error", () => {})
+    jest.spyOn(console, "error").mockImplementation(() => {})
     const res = run(new TypeError("password is 1234"), makeReq("GET", "/api/items"))
 
-    assert.equal(res.code, 500)
-    assert.equal(res.body.code, "INTERNAL_SERVER_ERROR")
-    assert.equal(res.body.message, "Internal server error")
-    assert.equal(res.body.message.includes("1234"), false)
+    expect(res.code).toBe(500)
+    expect(res.body.code).toBe("INTERNAL_SERVER_ERROR")
+    expect(res.body.message).toBe("Internal server error")
+    expect(res.body.message.includes("1234")).toBe(false)
   })
 
   it("production: no debug info and nothing internal leaks; development: debug shows the real cause", () => {
-    mock.method(console, "error", () => {})
+    jest.spyOn(console, "error").mockImplementation(() => {})
     const bug = () => new TypeError("secret internal detail")
 
     const prod = withEnv("production", () => run(bug()))
-    assert.equal("debug" in prod.body, false)
-    assert.equal(JSON.stringify(prod.body).includes("secret internal detail"), false)
+    expect("debug" in prod.body).toBe(false)
+    expect(JSON.stringify(prod.body).includes("secret internal detail")).toBe(false)
 
     const dev = withEnv("development", () => run(bug()))
-    assert.equal(dev.body.debug.message, "secret internal detail")
-    assert.equal(dev.body.message, "Internal server error")
+    expect(dev.body.debug.message).toBe("secret internal detail")
+    expect(dev.body.message).toBe("Internal server error")
   })
 
   it("server errors are logged with their cause; client errors are not logged", () => {
-    const log = mock.method(console, "error", () => {})
+    const log = jest.spyOn(console, "error").mockImplementation(() => {})
 
     run(Object.assign(new Error("not found"), { statusCode: 404, code: "X_NOT_FOUND" }))
-    assert.equal(log.mock.callCount(), 0)
+    expect(log.mock.calls.length).toBe(0)
 
     run(new Error("boom"))
-    assert.equal(log.mock.callCount(), 1)
+    expect(log.mock.calls.length).toBe(1)
   })
 
   it("our own 5xx errors keep their safe message and code (database error)", () => {
-    mock.method(console, "error", () => {})
+    jest.spyOn(console, "error").mockImplementation(() => {})
     const error = Object.assign(new Error("Database operation failed"), {
       statusCode: 500, code: "CATEGORY_DATABASE_ERROR", cause: new Error("connection lost"),
     })
 
     const res = withEnv("production", () => run(error))
-    assert.equal(res.body.code, "CATEGORY_DATABASE_ERROR")
-    assert.equal(res.body.message, "Database operation failed")
-    assert.equal(JSON.stringify(res.body).includes("connection lost"), false)
+    expect(res.body.code).toBe("CATEGORY_DATABASE_ERROR")
+    expect(res.body.message).toBe("Database operation failed")
+    expect(JSON.stringify(res.body).includes("connection lost")).toBe(false)
   })
 
   it("express.json() errors: broken JSON -> 400 INVALID_JSON, too large -> 413", () => {
     const broken = run(Object.assign(new SyntaxError("Unexpected token"), { type: "entity.parse.failed", status: 400 }))
-    assert.equal(broken.code, 400)
-    assert.equal(broken.body.code, "INVALID_JSON")
+    expect(broken.code).toBe(400)
+    expect(broken.body.code).toBe("INVALID_JSON")
 
     const big = run(Object.assign(new Error("too large"), { type: "entity.too.large", status: 413, limit: 102400 }))
-    assert.equal(big.code, 413)
-    assert.equal(big.body.code, "PAYLOAD_TOO_LARGE")
+    expect(big.code).toBe(413)
+    expect(big.body.code).toBe("PAYLOAD_TOO_LARGE")
   })
 
   it("odd errors: invalid status becomes 500, a thrown string works, a library .status is used", () => {
-    mock.method(console, "error", () => {})
-    assert.equal(run(Object.assign(new Error("odd"), { statusCode: 999, code: "X" })).code, 500)
-    assert.equal(run("a thrown string").code, 500)
+    jest.spyOn(console, "error").mockImplementation(() => {})
+    expect(run(Object.assign(new Error("odd"), { statusCode: 999, code: "X" })).code).toBe(500)
+    expect(run("a thrown string").code).toBe(500)
 
     const teapot = run(Object.assign(new Error("Teapot"), { status: 418 }))
-    assert.equal(teapot.code, 418)
-    assert.equal(teapot.body.code, "I_M_A_TEAPOT")
+    expect(teapot.code).toBe(418)
+    expect(teapot.body.code).toBe("I_M_A_TEAPOT")
   })
 
   it("if the response already started it hands the error to Express and writes nothing", () => {
@@ -130,8 +129,8 @@ describe("error handler", () => {
 
     errorHandler(new Error("late"), makeReq(), res, (error) => { passed = error })
 
-    assert.equal(passed.message, "late")
-    assert.equal(res.body, null)
+    expect(passed.message).toBe("late")
+    expect(res.body).toBe(null)
   })
 })
 
@@ -140,8 +139,8 @@ describe("not found middleware", () => {
     let error = null
     notFound(makeReq("PUT", "/api/categories?x=1"), {}, (e) => { error = e })
 
-    assert.equal(error.statusCode, 404)
-    assert.equal(error.code, "ROUTE_NOT_FOUND")
-    assert.deepEqual(error.details, { method: "PUT", path: "/api/categories" })
+    expect(error.statusCode).toBe(404)
+    expect(error.code).toBe("ROUTE_NOT_FOUND")
+    expect(error.details).toEqual({ method: "PUT", path: "/api/categories" })
   })
 })

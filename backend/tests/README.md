@@ -1,18 +1,18 @@
-# Backend tests
+# Backend tests (Jest)
 
-Built with Node's built-in test runner: nothing extra to install.
+    npm install --save-dev jest
 
-    npm test                 all tests
-    npm run test:unit        unit tests only
-    npm run test:integration integration tests only
+Add these scripts to package.json (the project uses ES modules, so Jest needs the flag):
 
-Add these scripts to package.json:
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:unit": "node --experimental-vm-modules node_modules/jest/bin/jest.js backend/tests/unit",
+    "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js backend/tests/integration"
 
-    "test": "node --test \"backend/tests/**/*.test.js\"",
-    "test:unit": "node --test \"backend/tests/unit/*.test.js\"",
-    "test:integration": "node --test \"backend/tests/integration/*.test.js\""
+Run from the project root:
 
-Needs Node 22 or newer (older Node: use `node --test` without the pattern).
+    npm test
+
+The Jest configuration is in jest.config.js (project root).
 
 ## Layout
 - `unit/`        one piece at a time, with fakes: validation, error handler, file safety, service rules, repository error mapping
