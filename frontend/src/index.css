@@ -6,6 +6,8 @@
 
     color-scheme: light;
 
+    --color-accent: #151515;
+
     --color-primary: #F88532;
     --color-primary-hover: #F89654;
     --color-secondary: #202020;
@@ -36,6 +38,8 @@
 [data-theme="dark"] {
 
     color-scheme: dark;
+    
+    --color-accent: #F88532;
 
     --color-primary: #F88532;
     --color-primary-hover: #F89654;
@@ -62,6 +66,7 @@
 }
 
 @theme inline {
+    --color-acc: var(--color-accent);
     --color-pr: var(--color-primary);
     --color-sec: : var(--color-secondary);
     --color-prh: var(--color-primary-hover);
