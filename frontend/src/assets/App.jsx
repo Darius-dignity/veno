@@ -1,12 +1,18 @@
-import { Routes, Route } from "react-router-dom"
+import { BrowserRouter ,Routes, Route } from "react-router-dom"
+import { SWRConfig } from "swr"
+import fetcher from "./utils/fetcher.js"
+
+import Dashboard from "./pages/dashboard/wrapper.jsx"
 
 const App = () => {
   return (
-    <>
-      <Routes>
-        <Route path="/route" element={<h1>Hello Router</h1>} />
-      </Routes>
-    </>
+    <SWRConfig value={{ fetcher, suspense: true, revalidateOnFocus: false }}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Routes>
+      </BrowserRouter>
+    </SWRConfig>
   )
 }
 
