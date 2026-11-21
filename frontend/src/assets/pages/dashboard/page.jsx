@@ -6,10 +6,10 @@ const DashboardPage = () => {
 
     return (
         <div>
-        Actual Page
-        <p>
-            { JSON.stringify(data) }
-        </p>
+            Actual Page
+            <p>
+                Dashboard Page
+            </p>
         </div>
     )
 }
