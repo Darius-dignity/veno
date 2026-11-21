@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+/* THEME LIGHT */
+
+:root, [data-theme="light"] {
+
+    color-scheme: light;
+
+    --color-accent: #151515;
+
+    --color-primary: #F88532;
+    --color-primary-hover: #F89654;
+    --color-secondary: #202020;
+    --color-secondary-hover: #303030;
+    --color-bg: #FAFAFA;
+    --color-item: #D9D9D9;
+
+    --color-text-head: #404040;
+    --color-text: #585858;
+    --color-text-detail: #656565;
+    --color-text-muted: #878787;
+    --color-text-countrary: #000000;
+
+    --color-shadow: #808080;
+
+    --border-radius-sm: 4px;
+    --border-radius-md: 6px;
+    --border-radius-lg: 8px;
+    --border-radius-xl: 12px;
+    --border-radius-2xl: 16px;
+    --border-radius-3xl: 24px;
+    --border-radius-4xl: 32px;
+}
+
+
+/* THEME DARK */
+
+[data-theme="dark"] {
+
+    color-scheme: dark;
+    
+    --color-accent: #F88532;
+
+    --color-primary: #F88532;
+    --color-primary-hover: #F89654;
+    --color-secondary: #CCCCCC;
+    --color-secondary-hover: #AAAAAA;
+    --color-bg: #303030;
+    --color-item: #222222;
+
+    --color-text-head: #DCDCDC;
+    --color-text: #CACACA;
+    --color-text-detail: #909090;
+    --color-text-muted: #656565;
+    --color-text-countrary: #FFFFFF;
+
+    --color-shadow: #404040;
+
+    --border-radius-sm: 4px;
+    --border-radius-md: 6px;
+    --border-radius-lg: 8px;
+    --border-radius-xl: 12px;
+    --border-radius-2xl: 16px;
+    --border-radius-3xl: 24px;
+    --border-radius-4xl: 32px;
+}
+
+@theme inline {
+    --color-acc: var(--color-accent);
+    --color-pr: var(--color-primary);
+    --color-sec: : var(--color-secondary);
+    --color-prh: var(--color-primary-hover);
+    --color-sech: var(--color-secondary-hover);
+    --color-bg: var(--color-bg);
+    --color-item: var(--color-item);
+    --color-th: var(--color-text-head);
+    --color-t: var(--color-text);
+    --color-td: var(--color-text-detail);
+    --color-tm: var(--color-text-muted);
+    --color-tc: var(--color-text-countrary);
+    --color-sc: var(--color-shadow);
+    --radius-sm: var(--border-radius-sm);
+    --radius-md: var(--border-radius-md);
+    --radius-lg: var(--border-radius-lg);
+    --radius-xl: var(--border-radius-xl);
+    --radius-2xl: var(--border-radius-2xl);
+    --radius-3xl: var(--border-radius-3xl);
+    --radius-4xl: var(--border-radius-4xl);
+}
+
+* {
+    box-sizing: border-box;
+    direction: rtl;
+}
+
+button {
+    cursor: pointer;
+}
