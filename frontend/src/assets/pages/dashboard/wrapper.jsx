@@ -7,7 +7,7 @@ import DashboardPage from "./page.jsx"
 
 const Dashboard = () => {
   return (
-    <ErrorBoundary FallbackComponent={<DashboardError />}>
+    <ErrorBoundary FallbackComponent={DashboardError}>
         <Suspense fallback={<DashboardSkeleton />}>
             <DashboardPage />
         </Suspense>

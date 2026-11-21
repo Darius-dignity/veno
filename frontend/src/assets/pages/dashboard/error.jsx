@@ -3,7 +3,7 @@ const DashboardError = ({ error, resetErrorBoundary }) => {
     <div>
       Error!
       <h2>
-        {error.message}
+        {error?.message}
       </h2>
       <button onClick={resetErrorBoundary}>Try Again</button>
     </div>

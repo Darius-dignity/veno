@@ -9,7 +9,7 @@ const App = () => {
     <SWRConfig value={{ fetcher, suspense: true, revalidateOnFocus: false }}>
       <BrowserRouter>
         <Routes>
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/" element={<Dashboard />} />
         </Routes>
       </BrowserRouter>
     </SWRConfig>
